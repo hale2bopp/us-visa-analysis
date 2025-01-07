@@ -29,4 +29,14 @@ options:
                         Year to end analysis. Should be <= current year.
 ```
 
-The final artifact of this script is an image created in the images directory for the country category you provided. 
+The final artifact of this script is an image created in the images directory for the country category you provided.
+
+## Example plot: 
+
+Input command: 
+```
+python3 visa-bulletin-scraper.py -c IN -s 2002 -e 2025
+```
+
+Output diagram: 
+![Generated Diagram for India from 2002-2025](lag_trends_for_in_column_from_2002_to_2025.jpg)
