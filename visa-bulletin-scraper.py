@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import os
 from datetime import datetime
 import hashlib
@@ -44,13 +45,6 @@ def fetch_or_cache(url, folder="cache"):
         f.write(content)
 
     return content
-
-# def fetch_url_data(url):
-#     response = requests.get(url)
-#     if response.status_code != 200:
-#         print(f"Failed to fetch {url}")
-#         return None
-#     return response
 
 # Function to fetch table data from the webpage
 def fetch_table_data(content, table_identifier):
@@ -95,6 +89,8 @@ def calculate_lag(df, column, base_date):
         print(f"Index: {index}, value: {value}")
         if value == "C":  # 'Current' means zero backlog
             lags[df.iloc[index, 0]] = 0
+        elif value == "U": # Ignore 
+            lags[df.iloc[index, 0]] = 0
         else:
             try:
                 backlog_date = datetime.strptime(value, "%d%b%y")  # Parse date like '01JAN20'
@@ -106,6 +102,7 @@ def calculate_lag(df, column, base_date):
 
 # Plotting function
 def plot_lag(data, months, title):
+    """
     plt.figure(figsize=(12, 6))
     for row, lags in data.items():
         plt.plot(months, lags, label=row)
@@ -116,12 +113,40 @@ def plot_lag(data, months, title):
     plt.grid()
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.show()
+    # plt.show()
+    plt.savefig('visa-bulletin-india.png')
+    # plt.savefig('foo.pdf')
+    """
+    plt.figure(figsize=(14, 8))
+
+    # Convert month_labels to datetime if not already
+    if isinstance(months[0], str):
+        months = [datetime.strptime(label, "%b %Y") for label in months]
+
+    # Plot each category's lag values over time
+    for category, lags in lag_data.items():
+        lag_data_years = [lag / 365 if lag is not None else None for lag in lags]
+        plt.plot(months, lag_data_years, label=category, marker="o")
+
+    # Format the x-axis for better readability
+    plt.gca().xaxis.set_major_locator(mdates.YearLocator())  # Major ticks at each year
+    plt.gca().xaxis.set_minor_locator(mdates.MonthLocator())  # Minor ticks at each month
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))  # Format labels as "Jan 2002"
+    plt.xticks(rotation=45)
+
+    plt.title(title)
+    plt.xlabel("Timeline (Visa Bulletin Date)")
+    plt.ylabel("Lag (Years)")
+    plt.grid(visible=True, which="both", linestyle="--", linewidth=0.5)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
+    plt.tight_layout()
+    # plt.show()
+    plt.savefig('visa-bulletin-india.png')
 
 
 if __name__ == "__main__":
     base_url = "https://travel.state.gov/content/travel/en/legal/visa-law0/visa-bulletin"  # Base URL
-    years = range(2002, 2024)  # Years to process
+    years = range(2002, 2025)  # Years to process
     months = ["january", "february", "march", "april", "may", "june",
               "july", "august", "september", "october", "november", "december"]
 
@@ -129,6 +154,7 @@ if __name__ == "__main__":
     column_of_interest = "INDIA" # input("Enter the column of interest (or press Enter to fetch full table): ")
     lag_data = {}
     month_labels = []
+    empl_categories_of_interest = ["1st"]# ["1st", "2nd", "3rd"]  # Restrict to these categories
 
     for year in years:
         for month in months:
@@ -164,18 +190,35 @@ if __name__ == "__main__":
             if table is not None:  # Ensure table exists
                 base_date = datetime.strptime(f"01{month[:3]}{year}", "%d%b%Y")
                 lags = calculate_lag(table, column_of_interest, base_date)
+
+                # Always update month_labels for every month
+                month_labels.append(f"{month[:3]} {year}")
+
                 if lags:
-                    # Add data to lag_data
-                    for row, lag in lags.items():
-                        if row not in lag_data:
-                            lag_data[row] = [None] * len(month_labels)  # Fill missing months with None
-                        lag_data[row].append(lag)
-                    # Add placeholders for rows not in lags
-                    for row in lag_data:
-                        if row not in lags:
-                            lag_data[row].append(None)
-                    month_labels.append(f"{month[:3]} {year}")  # Append valid month-year
+                    for category in empl_categories_of_interest:
+                        if category in lags:
+                            if category not in lag_data:
+                                lag_data[category] = []
+                            lag_data[category].append(lags[category])
+                    # Add None for categories of interest that are missing in the current `lags`
+                    for category in empl_categories_of_interest:
+                        if category not in lags:
+                            if category not in lag_data:
+                                lag_data[category] = []
+                            lag_data[category].append(None)
+                else:
+                    # No data for this month; append None for all categories
+                    for category in empl_categories_of_interest:
+                        if category not in lag_data:
+                            lag_data[category] = []
+                        lag_data[category].append(None)
+
+                # Debugging after the update
+                print(f"After: Month labels length: {len(month_labels)}, 1st row length: {len(lag_data.get('1st', []))}")
+
             else:
+                # Always append a placeholder for the missing table
+                month_labels.append(f"{month[:3]} {year}")
                 # If no table, append None for all rows
                 for row in lag_data:
                     lag_data[row].append(None)
