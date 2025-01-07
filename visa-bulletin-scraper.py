@@ -154,11 +154,13 @@ if __name__ == "__main__":
                     description='This program will take arguments relating to country category and display the'
                     'lag time for being eligible to apply for a green card for the first three employment categories'
                     'for that country category.')
-    parser.add_argument('-c', '--country-category', default="IN", help='Country category. IN(India)/CH(China)/ME(Mexico)/PH(Phillipines)/V(Vietnam)/All. IN default.')
+    parser.add_argument('-c', '--country-category', type=str, default="IN", help='Country category. IN(India)/CH(China)/ME(Mexico)/PH(Phillipines)/V(Vietnam)/All. IN default.')
+    parser.add_argument('-s', '--start-year', type=int, default=2002, help='Year to start analysis. Should be > 1998.')
+    parser.add_argument('-e', '--end-year', type=int, default=2025, help='Year to end analysis.')
     args = parser.parse_args()
 
     base_url = "https://travel.state.gov/content/travel/en/legal/visa-law0/visa-bulletin"  # Base URL
-    years = range(2002, 2025)  # Years to process
+    years = range(args.start_year, args.end_year)  # Years to process
     months = ["january", "february", "march", "april", "may", "june",
               "july", "august", "september", "october", "november", "december"]
 
@@ -241,7 +243,7 @@ if __name__ == "__main__":
 
     # Validate data and plot
     if lag_data and all(len(lags) == len(month_labels) for lags in lag_data.values()):
-        plot_lag(lag_data, month_labels, f"Lag Trends for '{column_of_interest}' Column")
+        plot_lag(lag_data, month_labels, f"Lag Trends for '{column_of_interest}' Column From {args.start_year} To {args.end_year}")
     else:
         print("Error: Data length mismatch.")
         print(f"Month labels length: {len(month_labels)}")
