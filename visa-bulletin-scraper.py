@@ -48,7 +48,7 @@ def fetch_or_cache(url, folder="cache"):
 
     return content
 
-# Function to fetch table data from the webpage
+# Function to fetch table data from the visa-bulletin webpage
 def fetch_table_data(content, table_identifier):
     soup = BeautifulSoup(content, 'html.parser')
     tables = soup.find_all('table')
@@ -63,7 +63,7 @@ def fetch_table_data(content, table_identifier):
         
         # Check if table_identifier is in the flattened headers
         headers_text = " ".join(headers).strip()
-        if table_identifier.lower() in headers_text.lower():  # Match case-insensitively
+        if table_identifier.lower() in headers_text.lower():
             rows = table.find_all('tr')
             data = []
             for row in rows[1:]:  # Skip header row(s)
@@ -76,17 +76,18 @@ def fetch_table_data(content, table_identifier):
     return None
 
 def check_for_match(df, target_column):
+    # To ensure we're not dealing with small differences/nuances in 
+    # table names, we'll compare the target_column and the column from 
+    # the dataframe in lowercase, and allow partial matches (i.e. IN matches with India)
     match = None
-
-    # Loop through the lowercase columns and check for partial match
     for col in df.columns:
-        if target_column in col.lower():  # Check if `column` is a substring of the current column
+        if target_column in col.lower():
             match = col
-            break  # Exit the loop once a match is found
+            break
     return match
 
 
-# Function to parse date and calculate lag
+# Function to parse base date, read table data and calculate lag time in days
 def calculate_lag(df, column, base_date):
     column_lower = column.lower()
     match = check_for_match(df, column_lower)
@@ -103,34 +104,38 @@ def calculate_lag(df, column, base_date):
     for index, value in df[match].items():
         if value == "C":  # 'Current' means zero backlog
             lags[df.iloc[index, 0]] = 0
-        elif value == "U": # Ignore 
-            lags[df.iloc[index, 0]] = 0
+        elif value == "U":
+             # U means "Unavailable", so this lag is technically 
+             # Infinite... setting it as None
+            lags[df.iloc[index, 0]] = None
         else:
             try:
-                backlog_date = datetime.strptime(value, "%d%b%y")  # Parse date like '01JAN20'
+                # Data in the visa bulletin tables generally looks like '01JAN20'
+                backlog_date = datetime.strptime(value, "%d%b%y")
                 lag = (base_date - backlog_date).days
                 lags[df.iloc[index, 0]] = lag
             except ValueError:
-                lags[df.iloc[index, 0]] = None  # Handle invalid/missing data gracefully
+                lags[df.iloc[index, 0]] = None
     return lags
 
 # Plotting function
 def plot_lag(data, months, title):
     plt.figure(figsize=(14, 8))
 
-    # Convert month_labels to datetime if not already
     if isinstance(months[0], str):
         months = [datetime.strptime(label, "%b %Y") for label in months]
 
-    # Plot each category's lag values over time
+    # Plot each category's lag values over time in years
     for category, lags in lag_data.items():
         lag_data_years = [lag / 365 if lag is not None else None for lag in lags]
         plt.plot(months, lag_data_years, label=category, marker="o")
 
     # Format the x-axis for better readability
-    plt.gca().xaxis.set_major_locator(mdates.YearLocator())  # Major ticks at each year
-    plt.gca().xaxis.set_minor_locator(mdates.MonthLocator())  # Minor ticks at each month
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))  # Format labels as "Jan 2002"
+    plt.gca().xaxis.set_major_locator(mdates.YearLocator())
+    plt.gca().xaxis.set_minor_locator(mdates.MonthLocator())
+
+    # Format labels as "Jan 2002"
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
     plt.xticks(rotation=45)
 
     plt.title(title)
@@ -147,28 +152,28 @@ def plot_lag(data, months, title):
 
 
 if __name__ == "__main__":
-
-    # parse args 
     parser = argparse.ArgumentParser(
                     prog='US Visa bulletin data scraper and data visualisation',
                     description='This program will take arguments relating to country category and display the'
                     'lag time for being eligible to apply for a green card for the first three employment categories'
                     'for that country category.')
     parser.add_argument('-c', '--country-category', type=str, default="IN", help='Country category. IN(India)/CH(China)/ME(Mexico)/PH(Phillipines)/V(Vietnam)/All. IN default.')
-    parser.add_argument('-s', '--start-year', type=int, default=2002, help='Year to start analysis. Should be > 1998.')
-    parser.add_argument('-e', '--end-year', type=int, default=2025, help='Year to end analysis.')
+    parser.add_argument('-s', '--start-year', type=int, default=2002, help='Year to start analysis. Should be >= 2001.')
+    parser.add_argument('-e', '--end-year', type=int, default=2025, help='Year to end analysis. Should be <= current year.')
     args = parser.parse_args()
 
-    base_url = "https://travel.state.gov/content/travel/en/legal/visa-law0/visa-bulletin"  # Base URL
-    years = range(args.start_year, args.end_year)  # Years to process
+    base_url = "https://travel.state.gov/content/travel/en/legal/visa-law0/visa-bulletin"
+    years = range(args.start_year, args.end_year)
     months = ["january", "february", "march", "april", "may", "june",
               "july", "august", "september", "october", "november", "december"]
 
-    table_identifier = "Employment-based"  # Header to identify the table
+    # There are different Visa categories - broadly, family-based and employment-based.
+    # I'm interested primarily in employment-based for now.
+    table_identifier = "Employment-based"
     column_of_interest = args.country_category
     lag_data = {}
     month_labels = []
-    empl_categories_of_interest = ["1st", "2nd", "3rd"]  # Restrict to these categories
+    empl_categories_of_interest = ["1st", "2nd", "3rd"]
 
     for year in years:
         for month in months:
@@ -201,11 +206,9 @@ if __name__ == "__main__":
 
             table = fetch_table_data(response, table_identifier)
             
-            if table is not None:  # Ensure table exists
+            if table is not None:
                 base_date = datetime.strptime(f"01{month[:3]}{year}", "%d%b%Y")
                 lags = calculate_lag(table, column_of_interest, base_date)
-
-                # Always update month_labels for every month
                 month_labels.append(f"{month[:3]} {year}")
 
                 if lags:
@@ -231,7 +234,6 @@ if __name__ == "__main__":
             else:
                 # Always append a placeholder for the missing table
                 month_labels.append(f"{month[:3]} {year}")
-                # If no table, append None for all rows
                 for row in lag_data:
                     lag_data[row].append(None)
                 print(f"No table found for {month} {year}. Skipping.")
