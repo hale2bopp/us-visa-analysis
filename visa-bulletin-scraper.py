@@ -7,6 +7,9 @@ import os
 from datetime import datetime
 import hashlib
 
+
+images_dir = "images"
+
 def fetch_or_cache(url, folder="cache"):
     """
     Fetch data from the URL or load from cache if it already exists.
@@ -102,21 +105,6 @@ def calculate_lag(df, column, base_date):
 
 # Plotting function
 def plot_lag(data, months, title):
-    """
-    plt.figure(figsize=(12, 6))
-    for row, lags in data.items():
-        plt.plot(months, lags, label=row)
-    plt.title(title)
-    plt.xlabel("Month")
-    plt.ylabel("Lag (Days)")
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.grid()
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    # plt.show()
-    plt.savefig('visa-bulletin-india.png')
-    # plt.savefig('foo.pdf')
-    """
     plt.figure(figsize=(14, 8))
 
     # Convert month_labels to datetime if not already
@@ -140,8 +128,11 @@ def plot_lag(data, months, title):
     plt.grid(visible=True, which="both", linestyle="--", linewidth=0.5)
     plt.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
     plt.tight_layout()
-    # plt.show()
-    plt.savefig('visa-bulletin-india.png')
+    image_name = title.lower().replace(" ", "_").replace("'", "") + ".png"
+    if not os.path.exists(images_dir):
+        os.makedirs(images_dir)
+    
+    plt.savefig(os.path.join(images_dir, image_name))
 
 
 if __name__ == "__main__":
