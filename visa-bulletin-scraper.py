@@ -6,7 +6,7 @@ import matplotlib.dates as mdates
 import os
 from datetime import datetime
 import hashlib
-
+import argparse 
 
 images_dir = "images"
 
@@ -31,7 +31,6 @@ def fetch_or_cache(url, folder="cache"):
 
     # Check if the file exists in the cache
     if os.path.exists(file_path):
-        print(f"Loading cached data for {url}")
         with open(file_path, "r", encoding="utf-8") as f:
             return f.read()
 
@@ -76,20 +75,32 @@ def fetch_table_data(content, table_identifier):
     print(f"Table with identifier '{table_identifier}' not found.")
     return None
 
+def check_for_match(df, target_column):
+    match = None
+
+    # Loop through the lowercase columns and check for partial match
+    for col in df.columns:
+        if target_column in col.lower():  # Check if `column` is a substring of the current column
+            match = col
+            break  # Exit the loop once a match is found
+    return match
+
+
 # Function to parse date and calculate lag
 def calculate_lag(df, column, base_date):
-    if column not in df.columns:
+    column_lower = column.lower()
+    match = check_for_match(df, column_lower)
+    if match is None:
         print(f"Column '{column}' not found in table for {base_date}")
-        print(f"This was a good year for {column}")
-        column = "All Chargeability Areas Except Those Listed"
-        if column not in df.columns:
+        updated_column = "All Chargeability Areas Except Those Listed"
+        print(f"This was a good year for {column}. Included in {updated_column}")
+        match = check_for_match(df, updated_column.lower())
+        if match is None:
             print(f"Something is really wrong because even {column} isn't present in Table")
             return None
-        
-    
+
     lags = {}
-    for index, value in df[column].items():
-        print(f"Index: {index}, value: {value}")
+    for index, value in df[match].items():
         if value == "C":  # 'Current' means zero backlog
             lags[df.iloc[index, 0]] = 0
         elif value == "U": # Ignore 
@@ -136,16 +147,26 @@ def plot_lag(data, months, title):
 
 
 if __name__ == "__main__":
+
+    # parse args 
+    parser = argparse.ArgumentParser(
+                    prog='US Visa bulletin data scraper and data visualisation',
+                    description='This program will take arguments relating to country category and display the'
+                    'lag time for being eligible to apply for a green card for the first three employment categories'
+                    'for that country category.')
+    parser.add_argument('-c', '--country-category', default="IN", help='Country category. IN(India)/CH(China)/ME(Mexico)/PH(Phillipines)/V(Vietnam)/All')
+    args = parser.parse_args()
+
     base_url = "https://travel.state.gov/content/travel/en/legal/visa-law0/visa-bulletin"  # Base URL
     years = range(2002, 2025)  # Years to process
     months = ["january", "february", "march", "april", "may", "june",
               "july", "august", "september", "october", "november", "december"]
 
     table_identifier = "Employment-based"  # Header to identify the table
-    column_of_interest = "INDIA" # input("Enter the column of interest (or press Enter to fetch full table): ")
+    column_of_interest = args.country_category
     lag_data = {}
     month_labels = []
-    empl_categories_of_interest = ["1st"]# ["1st", "2nd", "3rd"]  # Restrict to these categories
+    empl_categories_of_interest = ["1st", "2nd", "3rd"]  # Restrict to these categories
 
     for year in years:
         for month in months:
@@ -204,8 +225,6 @@ if __name__ == "__main__":
                             lag_data[category] = []
                         lag_data[category].append(None)
 
-                # Debugging after the update
-                print(f"After: Month labels length: {len(month_labels)}, 1st row length: {len(lag_data.get('1st', []))}")
 
             else:
                 # Always append a placeholder for the missing table
