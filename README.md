@@ -21,7 +21,12 @@ options:
   -h, --help            show this help message and exit
   -c COUNTRY_CATEGORY, --country-category COUNTRY_CATEGORY
                         Country category.
-                        IN(India)/CH(China)/ME(Mexico)/PH(Phillipines)/V(Vietnam)/All. IN default.
+                        IN(India)/CH(China)/ME(Mexico)/PH(Phillipines)/V(Vietnam)/All. IN
+                        default.
+  -s START_YEAR, --start-year START_YEAR
+                        Year to start analysis. Should be >= 2001.
+  -e END_YEAR, --end-year END_YEAR
+                        Year to end analysis. Should be <= current year.
 ```
 
 The final artifact of this script is an image created in the images directory for the country category you provided. 
