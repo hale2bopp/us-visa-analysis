@@ -9,7 +9,19 @@ This script plots the lag period (the time between the visa bulletin date and th
 
 To run: 
 ```
-python3 visa-bulletin-scraper.py
+$ python3 visa-bulletin-scraper.py --help
+
+usage: US Visa bulletin data scraper and data visualisation [-h] [-c COUNTRY_CATEGORY]
+
+This program will take arguments relating to country category and display thelag time for
+being eligible to apply for a green card for the first three employment categoriesfor that
+country category.
+
+options:
+  -h, --help            show this help message and exit
+  -c COUNTRY_CATEGORY, --country-category COUNTRY_CATEGORY
+                        Country category.
+                        IN(India)/CH(China)/ME(Mexico)/PH(Phillipines)/V(Vietnam)/All. IN default.
 ```
 
-The final artifact of this script is a plot. 
+The final artifact of this script is an image created in the images directory for the country category you provided. 

@@ -154,7 +154,7 @@ if __name__ == "__main__":
                     description='This program will take arguments relating to country category and display the'
                     'lag time for being eligible to apply for a green card for the first three employment categories'
                     'for that country category.')
-    parser.add_argument('-c', '--country-category', default="IN", help='Country category. IN(India)/CH(China)/ME(Mexico)/PH(Phillipines)/V(Vietnam)/All')
+    parser.add_argument('-c', '--country-category', default="IN", help='Country category. IN(India)/CH(China)/ME(Mexico)/PH(Phillipines)/V(Vietnam)/All. IN default.')
     args = parser.parse_args()
 
     base_url = "https://travel.state.gov/content/travel/en/legal/visa-law0/visa-bulletin"  # Base URL
